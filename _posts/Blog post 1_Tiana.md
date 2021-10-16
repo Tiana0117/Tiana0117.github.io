@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Blog Post 1 about Climate"
-date: 2021-10-14 15:00:00
+date: 2021-10-14
 ---
 # Climate Change Visualization
 
