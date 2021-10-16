@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Blog Post 1 about Climate"
-date: 2021-10-14 5:00:00
+date: 2021-10-14 15:00:00
 ---
 # Climate Change Visualization
 
@@ -571,7 +571,7 @@ write_html(fig, "scatter1.html")
 
 
     
-![output_38_0.png](/images/output_38_0.png)
+![output_38_1.png](/images/output_38_1.png)
    
 
 
@@ -585,7 +585,7 @@ write_html(fig, "scatter2.html")
 
 
     
-![output_40_0.png](/images/output_40_0.png)
+![output_40_1.png](/images/output_40_1.png)
 
 
 > Compared with the plot of India and Iceland, we could see that the average temperature in China and Japan has a larger fluctuation. Generally, the yearly average temperature in China has increased a lot. We could also catch some detailed info from this scatter plot. For instance, in 2000, Japan presents an extremely high average temperature.
@@ -653,7 +653,7 @@ write_html(fig, "heat.html")
 
 
     
-![output_50_0.png](/images/output_50_0.png)
+![output_50_1.png](/images/output_50_1.png)
 
 
 
