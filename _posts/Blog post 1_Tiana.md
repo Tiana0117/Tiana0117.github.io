@@ -571,8 +571,8 @@ write_html(fig, "scatter1.html")
 
 
     
-![png](output_38_0.png)
-{% include scatter1.html %}    
+![output_38_0.png](/images/output_38_0.png)
+   
 
 
 > We could see from the plot that the average temperature in Iceland is way lower than that in India.
@@ -585,8 +585,7 @@ write_html(fig, "scatter2.html")
 
 
     
-![png](output_40_0.png)
-{% include scatter2.html %} 
+![output_40_0.png](/images/output_40_0.png)
 
 
 > Compared with the plot of India and Iceland, we could see that the average temperature in China and Japan has a larger fluctuation. Generally, the yearly average temperature in China has increased a lot. We could also catch some detailed info from this scatter plot. For instance, in 2000, Japan presents an extremely high average temperature.
@@ -654,8 +653,8 @@ write_html(fig, "heat.html")
 
 
     
-![png](output_50_0.png)
-{% include heat.html %}  
+![output_50_0.png](/images/output_50_0.png)
+
 
 
 
