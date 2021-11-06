@@ -1,0 +1,730 @@
+---
+layout: post
+title: "Blog Post 3 about Webpage"
+date: 2021-10-19 5:00:00
+---
+# Blog Post 5: Spectral Clustering
+
+In this blog post, we will go through a *spectral clustering* algorithm for clustering data points. 
+
+
+## Intro - Clustering Example
+
+We will start with an example where we don't need spectral clustering. 
+
+
+```python
+import numpy as np
+from sklearn import datasets
+from matplotlib import pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn import metrics
+```
+
+### Simple Clustering 
+
+
+```python
+n = 200
+np.random.seed(1111)
+X, y = datasets.make_blobs(n_samples=n, shuffle=True, random_state=None, centers = 2, cluster_std = 2.0)
+from sklearn.cluster import KMeans
+km = KMeans(n_clusters = 2)
+km.fit(X)
+
+plt.scatter(X[:,0], X[:,1], c = km.predict(X))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f839281e670>
+
+
+
+
+    
+![output_3_1.png](/images/output_3_1.png)
+    
+
+
+*Clustering* refers to the task of separating this data set into the two natural "blobs." K-means is a very common way to achieve this task, which has good performance on circular-ish blobs like these: 
+
+### Harder Clustering
+
+If our data is "shaped weird", then the clustering would be in crescents-shaped. In this case, we found that `Kmeans clustering` does not work well. This is because k-means is, by design, looking for circular clusters.
+
+
+```python
+np.random.seed(1234)
+n = 200
+X, y = datasets.make_moons(n_samples=n, shuffle=True, noise=0.05, random_state=None)
+km = KMeans(n_clusters = 2)
+km.fit(X)
+plt.scatter(X[:,0], X[:,1], c = km.predict(X))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f8392932100>
+
+
+
+
+    
+![output_6_1.png](/images/output_6_1.png)
+    
+
+
+As we'll see, spectral clustering is able to correctly cluster the two crescents. Now, we will derive and implement spectral clustering step by step.
+
+## Part A - Construct a Similarity Matrix
+
+Construct the *similarity matrix* $\mathbf{A}$. $\mathbf{A}$ should be a matrix (2d `np.ndarray`) with shape `(n, n)`, where `n` represnets the number of data points). 
+
+We defined a function for constructing the similarity matrix. The function requires a parameter `epsilon`. The function finally returns a matrix $\mathbf{A}$, where:
+* Entry `A[i,j]` should be equal to `1` if `X[i]` (the coordinates of data point `i`) is within distance `epsilon` of `X[j]` (the coordinates of data point `j`), 
+* Otherwise, Entry `A[i,j]` should be equal to `0`. 
+* The diagonal entries `A[i,i]` should all be equal to zero.
+
+Hint: The function `np.fill_diagonal()` is a good way to set the values of the diagonal of a matrix.  
+
+
+```python
+def similarity_matrix(X,epsilon):
+    A = metrics.pairwise_distances(X,X, metric='euclidean')
+
+    A[A < epsilon] = 1
+    A[A != 1] = 0
+    np.fill_diagonal(A,0)
+    
+    return (A)
+```
+
+For this part, we use `epsilon = 0.4`. 
+
+
+```python
+A = similarity_matrix(X,0.4)
+A
+```
+
+
+
+
+    array([[0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 1., 0.],
+           ...,
+           [0., 0., 0., ..., 0., 1., 1.],
+           [0., 0., 1., ..., 1., 0., 1.],
+           [0., 0., 0., ..., 1., 1., 0.]])
+
+
+
+## Part B - Binary Norm Cut Objective 
+
+Now, we have constructed a similarity matrix `A`, which contains information about which points are within distance `epsilon` from which other points. So, the task of clustering the data points in `X` can be regarded as the task of partitioning the rows and columns of `A`.
+
+**Variables for calculating:**
+* Let $d_i = \sum_{j = 1}^n a_{ij}$ be the $i$th row-sum of $\mathbf{A}$, which is also called the *degree* of $i$. 
+* Let $C_0$ and $C_1$ be two clusters of the data points. We assume that every data point is in either $C_0$ or $C_1$. 
+* Let `y[i]` (0 or 1) be the label of point `i`. So, if `y[i] = 1`, then point `i` (and therefore row $i$ of $\mathbf{A}$) is an element of cluster $C_1$.  
+
+**Function for The *binary norm cut objective* of a matrix $\mathbf{A}$**
+
+
+$$N_{\mathbf{A}}(C_0, C_1)\equiv \mathbf{cut}(C_0, C_1)\left(\frac{1}{\mathbf{vol}(C_0)} + \frac{1}{\mathbf{vol}(C_1)}\right)\;.$$
+
+In this function: 
+- $\mathbf{cut}(C_0, C_1) \equiv \sum_{i \in C_0, j \in C_1} a_{ij}$ is the *cut* of the clusters $C_0$ and $C_1$. 
+- $\mathbf{vol}(C_0) \equiv \sum_{i \in C_0}d_i$, where $d_i = \sum_{j = 1}^n a_{ij}$ is the *degree* of row $i$ (the total number of all other rows related to row $i$ through $A$). The *volume* of cluster $C_0$ is a measure of the size of the cluster. 
+
+
+#### B.1 The Cut Term
+
+First, the cut term $\mathbf{cut}(C_0, C_1)$ is the number of nonzero entries in $\mathbf{A}$ that relate points in cluster $C_0$ to points in cluster $C_1$. We want the value to be 0, which indicates the data points in $C_0$ is separated from data points in $C_1$ with a distance larger than `episilon`. 
+
+We write a function called `cut(A,y)` to compute the cut term.
+
+
+```python
+def cut(A,y):
+    cut = 0
+    c1_idx = np.where(y == 0)[0] # the points in cluster 0
+    c2_idx = np.where(y == 1)[0] # the points in cluster 1
+    
+    # sum up the entries for each pair of points in different clusters. 
+    for row_idx in c1_idx:
+        for col_idx in c2_idx:
+            cut+= A[row_idx,col_idx]
+            # add the distance 
+            
+            
+    return (cut)
+```
+
+Compute the cut objective for the true clusters `y`. 
+
+Then, generate a random vector of random labels of length `n`, with each label equal to either 0 or 1. Check the cut objective for the random labels. 
+
+
+```python
+true_cut = cut(A,y) # true cut
+
+random_y = np.random.randint(0,2,size = 200)
+
+random_cut = cut(A,random_y) # the random cut
+
+print(f"true cut: {true_cut}")
+print(f"random cut: {random_cut}")
+```
+
+    true cut: 13.0
+    random cut: 1150.0
+
+
+We found that the cut objective for the true labels is *much* smaller than the cut objective for the random labels.  This shows that this part of the cut objective favors the true clusters over the random ones. 
+
+#### B.2 The Volume Term 
+
+Now we move to the *volume term*. The *volume* of cluster indicates how "big" the cluster is. If we choose cluster $C_0$ to be small, then $\mathbf{vol}(C_0)$ will be small and $\frac{1}{\mathbf{vol}(C_0)}$ will be large, leading to an undesirable higher objective value. 
+
+We write a function called `vols(A,y)`. The function computes the volumes of $C_0$ and $C_1$ and returns them as a tuple.  
+
+
+```python
+def vols(A,y):
+
+ 
+    vol0 = A[y==0,:].sum() # vol_C0
+    vol1 = A[y==1,:].sum() # vol_C1
+    
+    return tuple([vol0,vol1])
+```
+
+Then, we write a function called `normcut(A,y)`.
+
+This function uses the result returned from the functions `cut(A,y)` and `vols(A,y)`. It computes the binary normalized cut objective of a matrix `A` with clustering vector `y`. 
+
+
+```python
+def normcut(A,y):
+    
+    vol0 = vols(A,y)[0]
+    vol1 = vols(A,y)[1]
+    normcut = cut(A,y) * (1/vol0 + 1/vol1)
+    return normcut
+```
+
+Now, we compare the `normcut` objective using the true labels `y` and the fake labels you generated above. 
+
+
+```python
+true_normcut = normcut(A,y)
+random_normcut = normcut(A,random_y) 
+print(f"true norm cut: {true_normcut}")
+print(f"random norm cut: {random_normcut}")
+```
+
+    true norm cut: 0.011518412331615225
+    random norm cut: 1.0240023597759158
+
+
+Synthesizing, we want the binary normcut objective to be small, which indicates that:
+
+1. There are relatively few entries of $\mathbf{A}$ that join $C_0$ and $C_1$. 
+2. Neither $C_0$ and $C_1$ are too small. 
+
+## Part C - Math Trick
+
+Seeing from the conclusion of Part B, we want to find a cluster vector `y` such that `normcut(A,y)` is small. However, it is impossible to find the best clustering in practical time, even for relatively small data sets. We need a math trick! 
+
+Here's the trick: define a new vector $\mathbf{z} \in \mathbb{R}^n$ such that: 
+
+$$
+z_i = 
+\begin{cases}
+    \frac{1}{\mathbf{vol}(C_0)} &\quad \text{if } y_i = 0 \\ 
+    -\frac{1}{\mathbf{vol}(C_1)} &\quad \text{if } y_i = 1 \\ 
+\end{cases}
+$$
+
+
+Now, the signs of  the elements of $\mathbf{z}$ contain all the information from $\mathbf{y}$: if $i$ is in cluster $C_0$, then $y_i = 0$ and $z_i > 0$. 
+
+So, now we need to:
+
+> The function `transform(A,y)` 
+
+This function is to compute the appropriate $\mathbf{z}$ vector given `A` and `y`, using the formula above. We populate the indices of $\mathbf{z}$ according to the values with the corresponding indices in `y`.
+
+
+```python
+def transform(A,y):
+    
+    # initiate the vector
+    z = np.zeros(y.shape[0])
+    # populate indices 
+    z[np.where(y == 0)[0]] = 1/vols(A,y)[0]
+    z[np.where(y == 1)[0]] = (-1)/vols(A,y)[1] 
+    
+    return z
+```
+
+
+```python
+z = transform(A,y) 
+```
+
+> Check the equation $$\mathbf{N}_{\mathbf{A}}(C_0, C_1) = \frac{\mathbf{z}^T (\mathbf{D} - \mathbf{A})\mathbf{z}}{\mathbf{z}^T\mathbf{D}\mathbf{z}}\;,$$
+
+Then, check the equation above that relates the matrix product to the normcut objective, by computing each side separately and checking that they are equal. 
+
+We first construct $\mathbf{D}$, which is the diagonal matrix with nonzero entries $d_{ii} = d_i$, and where $d_i = \sum_{j = 1}^n a_i$ is the degree (row-sum) from before.  
+
+
+```python
+# construct D with vector of row-sums
+D = np.zeros((n, n))    
+d = np.sum(A, axis = 1)
+np.fill_diagonal(D, d)
+
+right = (z.T @ (D - A) @ z)/(z.T @ D @ z)
+
+left = normcut(A,y)
+
+print(f"left: {left}")
+print(f"right: {right}")
+```
+
+    left: 0.011518412331615225
+    right: 0.011518412331615088
+
+
+#### Note
+
+The equation above is exact, but computer arithmetic is not! `np.isclose(a,b)` is a good way to check if `a` is "close" to `b`, in the sense that they differ by less than the smallest amount that the computer is (by default) able to quantify.  
+
+
+```python
+np.isclose(left,right)
+```
+
+
+
+
+    True
+
+
+
+Two sides of the equation are equal from the perspective of the computer!
+
+> $\mathbf{z}^T\mathbf{D}\mathbb{1} = 0$
+
+Check the identity $\mathbf{z}^T\mathbf{D}\mathbb{1} = 0$, where $\mathbb{1}$ is the vector of `n` ones (i.e. `np.ones(n)`). This identity effectively says that $\mathbf{z}$ should contain roughly as many positive as negative entries. 
+
+
+```python
+v_1 = np.ones(n)
+identity = z.T @ D @ v_1
+identity
+```
+
+
+
+
+    0.0
+
+
+
+So far, the function `transform()` is implemented and the equation for the normcut objective is verified. We could approximate the *binary norm cut objective* in this way.
+
+## Part D - Optimizing
+
+To minimize the normcut objective is mathematically related to minimizing the function 
+
+$$ R_\mathbf{A}(\mathbf{z})\equiv \frac{\mathbf{z}^T (\mathbf{D} - \mathbf{A})\mathbf{z}}{\mathbf{z}^T\mathbf{D}\mathbf{z}} $$
+
+subject to the condition $\mathbf{z}^T\mathbf{D}\mathbb{1} = 0$. 
+
+In the code below, we define an `orth_obj` function. 
+
+
+```python
+def orth(u, v):
+    return (u @ v) / (v @ v) * v
+
+e = np.ones(n) 
+
+d = D @ e
+
+def orth_obj(z):
+    z_o = z - orth(z, d)
+    return (z_o @ (D - A) @ z_o)/(z_o @ D @ z_o)
+```
+
+Use the `minimize` function from `scipy.optimize` to minimize the function `orth_obj`. For the returned result of the `minimize` function, the attribute `x` represents the solution array.
+
+
+```python
+import scipy
+
+z_min= scipy.optimize.minimize(orth_obj, z, method = "nelder-mead").x
+```
+
+## Part E - Plotting Data
+
+After computing a minimum of the function $ R_\mathbf{A}$, we plot the data.
+
+
+```python
+z_min[z_min >= 0] = 0
+z_min[z_min < 0] = 1
+
+plt.scatter(X[:,0], X[:,1], c = z_min)
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f8394420940>
+
+
+
+
+    
+![output_42_1.png](/images/output_42_1.png)
+    
+
+
+## Part F - Better Approach using Eigenvalues
+
+In this part, we are going to use eigenvalues and eigenvectors of matrices. 
+
+1. We first construct the matrix $\mathbf{L} = \mathbf{D}^{-1}(\mathbf{D} - \mathbf{A})$, which is often called the (normalized) *Laplacian* matrix of the similarity matrix $\mathbf{A}$. 
+
+2. Then, we compute its eigenvector corresponding to the second-smallest eigenvalue (`z_eig`). 
+
+3. Plot the data using the sign of `z_eig` as the color. 
+
+The plot shows a more correct clustering of the data, with only a small number of points mis-clustered.
+
+Hint: We need to use `np.linalg.pinv` to invert the matrix because it could help to compute the inverse of the singular matrix.
+
+
+```python
+L = np.linalg.pinv(D) @ (D -  A) # the Laplassian matrix
+
+# indices of sorted eigenvalues
+# eig(L)[0] returns eigenvalues
+# sort the eigenvalues
+eigval_sorted = np.linalg.eig(L)[0].argsort() 
+
+# eig(L)[1] returns eigenvectors
+# get the eigenvector for the second-smallest eigenvalue
+eigvecs = np.linalg.eig(L)[1] 
+z_eig = eigvecs[:,eigval_sorted][:,1] 
+
+# plot the data
+z_eig[z_eig >= 0] = 1
+z_eig[z_eig < 0] = 0
+
+plt.scatter(X[:,0], X[:,1], c = z_eig)
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f8394491700>
+
+
+
+
+    
+![output_44_1.png](/images/output_44_1.png)
+    
+
+
+> There is one datapoint misclustered as shown in the plot with this approach. But, explicitly optimizing the orthogonal objective is way too slow to be practical. Thus, we still use this approach in out later synthesized function.
+
+## Part G - Synthesize parts
+
+Now, we write a function called `spectral_clustering(X, epsilon)`.
+
+Mostly, the function incorporates the previous parts.
+
+The function will:
+
+* Construct the similarity matrix. 
+* Construct the Laplacian matrix. 
+* Compute the eigenvector with second-smallest eigenvalue of the Laplacian matrix. 
+* Return labels based on this eigenvector. 
+
+
+```python
+def spectral_clustering(X, epsilon):
+
+    """
+    The function serves to perfrom spectral clustering on the input data.
+
+    
+    Parameter:
+        X: the input data, (n x 2) array 
+        epsilon: the threshold classifying points to the same cluster by distance.
+    
+    Returns:
+        array labelling the points.
+        
+    Assumption:
+        The input data is weird shaped(not circularish blobs) 
+        and needs to be clustered into two.
+
+    """
+    
+    # create the similarity matrix   
+    A = similarity_matrix(X, epsilon)
+    
+    # create the diagonal matrix
+    D = np.zeros((n, n))
+    d = [A.sum(axis=1)]
+    np.fill_diagonal(D,d)
+    
+    # create the Laplacian matrix
+    # compute the psuedo-invert
+    L = np.linalg.pinv(D) @ (D -  A)
+    
+    # the eigenvector for the second-smallest eigenvalue
+    # eig(L)[0] returns eigenvalues
+    # eig(L)[1] returns eigenvectors
+    eigval_sorted = np.linalg.eig(L)[0].argsort() 
+    z_eig = np.linalg.eig(L)[1][:,eigval_sorted][:,1] 
+    
+    z_eig[z_eig >= 0] = 1
+    z_eig[z_eig < 0] = 0
+    
+    return z_eig
+```
+
+
+```python
+n = 1000
+X, y = datasets.make_moons(n_samples=n, shuffle=True, noise=0.05, random_state=None)
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.4))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836929d2e0>
+
+
+
+
+    
+![output_48_1.png](/images/output_48_1.png)
+    
+
+
+> The function successfully clusters the dataset with the shape of crescents.
+
+## Part H - Change the Noise
+
+Run a few experiments using the function, by generating different data sets using `make_moons`. 
+
+In this part, we will try to change the `noise` value to see how plot changes.
+
+
+```python
+n = 1000
+X, y = datasets.make_moons(n_samples=n, shuffle=True, noise=0.1, random_state=None)
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.4))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f83693cd5e0>
+
+
+
+
+    
+![output_51_1.png](/images/output_51_1.png)
+    
+
+
+
+```python
+n = 1000
+X, y = datasets.make_moons(n_samples=n, shuffle=True, noise=0.01, random_state=None)
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.4))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836930ad30>
+
+
+
+
+    
+![output_52_1.png](/images/output_52_1.png)
+    
+
+
+
+```python
+n = 1000
+X, y = datasets.make_moons(n_samples=n, shuffle=True, noise=1, random_state=None)
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.4))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836a57e220>
+
+
+
+
+    
+![output_53_1.png](/images/output_53_1.png)
+    
+
+
+> When increasing the noise value, we found that the pattern altered. Two clusters were separated badly when the noise value is changed to 1. When the noise value is set as 0.1, two clusters separate clearly, but we could not see the points within each cluster.
+
+> Thus, an appropriate noise value is needs to be set.
+
+## Part I - Try Function with Bull's Eye
+
+Now try spectral clustering function on another data set -- the bull's eye! 
+
+
+```python
+n = 1000
+X, y = datasets.make_circles(n_samples=n, shuffle=True, noise=0.05, random_state=None, factor = 0.4)
+plt.scatter(X[:,0], X[:,1])
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f8369c50fa0>
+
+
+
+
+    
+![output_56_1.png](/images/output_56_1.png)
+    
+
+
+First, try to cluster with k-means method.
+
+
+```python
+km = KMeans(n_clusters = 2)
+km.fit(X)
+plt.scatter(X[:,0], X[:,1], c = km.predict(X))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836af27bb0>
+
+
+
+
+    
+![output_58_1.png](/images/output_58_1.png)
+    
+
+
+Again, k-means does not work well with this data. Then, let's try with `spectral_clustering()`.
+
+
+```python
+X, y = datasets.make_circles(n_samples=n, shuffle=True, noise=0.05, random_state=None, factor = 0.4)
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.4))
+```
+
+    /Users/yiningliang/anaconda3/lib/python3.8/site-packages/numpy/core/_asarray.py:171: ComplexWarning: Casting complex values to real discards the imaginary part
+      return array(a, dtype, copy=False, order=order, subok=True)
+
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836b016b50>
+
+
+
+
+    
+![output_60_2.png](/images/output_60_2.png)
+    
+
+
+The function successfully separated the circle with the `epsilon` value of 0.4.
+
+Now, let's do some experimentation with other `epsilon` values.
+
+
+```python
+# epsilon = 0.8
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.6))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836cfa54c0>
+
+
+
+
+    
+!![output_62_1.png](/images/output_62_1.png)
+    
+
+
+
+```python
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.5))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f83944315b0>
+
+
+
+
+    
+![output_63_1.png](/images/output_63_1.png)    
+
+
+
+```python
+plt.scatter(X[:,0], X[:,1], c = spectral_clustering(X, 0.2))
+```
+
+
+
+
+    <matplotlib.collections.PathCollection at 0x7f836aff6eb0>
+
+
+
+
+    
+![output_64_1.png](/images/output_64_1.png)    
+
+
+> By changing the epsilon value, we found that the effectiveness of spectral_clustering( ) varies. Thus, this function is only effective for certain epsilon values (approximately 0.3 to 0.5).
