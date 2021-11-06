@@ -1,7 +1,7 @@
 ---
 layout: post
-title: "Blog Post 3 about Webpage"
-date: 2021-10-19 5:00:00
+title: "Blog Post 5 about Spectral Clustering"
+date: 2021-11-01 5:00:00
 ---
 # Blog Post 5: Spectral Clustering
 
