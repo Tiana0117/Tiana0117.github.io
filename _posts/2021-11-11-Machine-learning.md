@@ -69,7 +69,7 @@ validation_dataset = validation_dataset.skip(val_batches // 5)
 
 Now, we have created TensorFlow Datasets for training, validation, and testing.
 
-## Working with Datasets
+## 2. Working with Datasets
 
 We define a function `two_row_visualization` to show three random pictures of cates in the first row and three random pictures of dogs in the second row.
 
@@ -131,7 +131,7 @@ validation_dataset = validation_dataset.prefetch(buffer_size=AUTOTUNE)
 test_dataset = test_dataset.prefetch(buffer_size=AUTOTUNE)
 ```
 
-## Check Label Frequencies
+## 3. Check Label Frequencies
 
 First, we create an iterator called `labels`.
 
@@ -162,7 +162,7 @@ counts
 
 Since the number of cat images and dog images are the same, the baseline model has the accuracy of 50% in our case.
 
-## First Model
+## 4. First Model
 
 Create a tf.keras.Sequential model using some of the layers. We will include at least two `Conv2D` layers, at least two `MaxPooling2D` layers, at least one `Flatten` layer, at least one `Dense` layer, and at least one `Dropout` layer. 
 
@@ -291,7 +291,7 @@ plt.legend()
 
   By looking at the plot, we could see the training accuracy is much higher than the validation accuracy. This indicates the overfitting of model 1.
 
-## Model with Data Augmentation
+## 5. Model with Data Augmentation
 
 Data augmentation refers to the practice of including modified copies of the same image in the training set. By implementing data augmentation, we could help our model learn better about invariant features of the input images.
 
@@ -459,7 +459,7 @@ plt.legend()
 
   By looking at the plot, we could see the training accuracy and the validation accuracy become really close at the end. This indicates the overfitting problem of model 1 has been solved by adding augmentation layers in model 2.
 
-## Data Preprocessing
+## 6. Data Preprocessing
 
 In this part, we are going to create a preprocessor layer to increase the model performance score.
 
@@ -590,7 +590,7 @@ plt.legend()
 
   By looking at the plot, we could see the training accuracy and the validation accuracy are close. This indicates there is no overfitting in model 3.
 
-## Transfer Learning
+## 7. Transfer Learning
 
 In this section, we will incorporate an exisiting model into a full model for our current task.
 
@@ -766,7 +766,7 @@ plt.legend()
 
   By looking at the plot, we could see the validation accuracy is consistently higher than the training accuracy. This indicates there is no overfitting in model 4.
 
-## 6. Score on Test Data
+## 8. Score on Test Data
 In this section, we are going to evaluate the accuracy of the most performant model, `model4`, on the unseen `test_dataset`.
 
 
