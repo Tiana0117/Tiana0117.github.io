@@ -3,7 +3,7 @@ layout: post
 title: "Blog Post 5 about Model Training"
 date: 2021-11-11
 ---
-# Blog Post 5 - Model to Distinguish Image Objects
+# Model to Distinguish Image Objects
 In this blog post, we will learn several new skills and concepts related to image classification in Tensorflow. 
 
 We want to build a machine learning algorithm to distinguish between pictures of dogs and pictures of cats.
