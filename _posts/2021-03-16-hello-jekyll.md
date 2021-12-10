@@ -112,7 +112,7 @@ Navigate to `http://127.0.0.1:4000/` in your browser. You should see an exact co
 **Note**: You may experience an error message telling you that `webrick` is missing. If you do, try running the following command in your terminal: 
 
 ```bash
-bundle add webrick
+gem add webrick
 ```
 
 Then, try 
