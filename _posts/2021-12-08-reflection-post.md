@@ -12,7 +12,9 @@ I love music, and I always regard music as a source of stress relief. It is a gr
 ## What would I suggest doing to further improve the project? 
 
 * Though we have worked on making the aesthetic aspect of the webapp, I think we could put more effort in improving the webapp functionally and aesthetically. 
+
 > Aesthetics: a beautiful and nicely designed interface can facilitate user experience, and thus adding more css style features to the webapp is necessary.
+
 > Functionality: Our webapp has a textbox for the user to input the lyrics of a song. We did not discover a tool to help the webapp automatically link to lyrics with the info of the song name. So, the user has to input the lyrics value by googling by themselves and copy/paste it. With this deficiency, the webapp would unlikely be evaluated as convenient.
 * Another improvement would require a lot more time and effort. We could include a functionality that allows the user to give us the feedback of our prediction. To be specific, by collecting the user feedback, we could develop another dataset, which could potentially be used as training data to further improve our model in the future.
 
