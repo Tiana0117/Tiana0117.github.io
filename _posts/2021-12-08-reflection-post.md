@@ -1,5 +1,9 @@
 # Music Classifier - PIC16B Team Project
 
+## The Github repository of our project
+
+[repository](https://github.com/jiahao303/music-classifier)
+
 ## Overall, what did we achieve? (answer as a group)
 
 I love music, and I always regard music as a source of stress relief. It is a great experience for me to do a project related to music. Music is easy to access nowadays thanks to technology development and the internet. However, when downloading music to our own phone, there is no genre classification, and it is hard to get all of the downloaded songs sorted manually. So, after discussing with Jiahao and Stella, we finally decided to develop a model which would solve this problem and get the song’s genre classified from its metadata. And we would like to implement the model into a webapp, which is more accessible to users and, at the same time, gives a more straightforward visualization of how our model works.
